@@ -75,41 +75,48 @@
                 return;
             }
 
-            var formData = new FormData();
-            formData.append('audio', audioUpload.files[0]);
-            formData.append('description', description);
-            formData.append('lat', clickedLatLng.lat);
-            formData.append('lng', clickedLatLng.lng);
+            var reader = new FileReader();
+            reader.onload = function(event) {
+                var audioUrl = event.target.result;
+                var formData = new FormData();
+                formData.append('audio', audioUpload.files[0]);
+                formData.append('description', description);
+                formData.append('lat', clickedLatLng.lat);
+                formData.append('lng', clickedLatLng.lng);
 
-            fetch('http://localhost:3000/upload', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    var audioUrl = data.url;
-                    // Add marker to the map at the clicked location
-                    var marker = L.marker(clickedLatLng).addTo(map);
-                    marker.bindPopup(
-                        `<b>${description}</b><br>
-                        <audio controls>
-                            <source src="${audioUrl}" type="${audioUpload.files[0].type}">
-                            Your browser does not support the audio element.
-                        </audio>`
-                    ).openPopup();
-                    
-                    // Reset upload section
-                    document.getElementById('upload-section').style.display = 'none';
-                    audioUpload.value = '';
-                    document.getElementById('marker-description').value = '';
-                } else {
-                    alert('File upload failed.');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-            });
+                // Add marker to the map at the clicked location
+                var marker = L.marker(clickedLatLng).addTo(map);
+                marker.bindPopup(
+                    `<b>${description}</b><br>
+                    <audio controls>
+                        <source src="${audioUrl}" type="${audioUpload.files[0].type}">
+                        Your browser does not support the audio element.
+                    </audio>`
+                ).openPopup();
+
+                // Reset upload section
+                document.getElementById('upload-section').style.display = 'none';
+                audioUpload.value = '';
+                document.getElementById('marker-description').value = '';
+
+                // Upload file to server
+                fetch('http://localhost:3000/upload', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Optionally handle successful upload response
+                    } else {
+                        alert('File upload failed.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+            };
+            reader.readAsDataURL(audioUpload.files[0]);
         });
     </script>
 </body>
