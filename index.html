@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saigon Sound Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <style>
+        #map {
+            height: 500px;
+        }
+        #upload-section {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Saigon Sound Map</h1>
+    <p>By Officine Gặp - follow our fanpage <a href="https://www.facebook.com/OfficineGap">https://www.facebook.com/OfficineGap</a></p>
+    <p>Zoom in and click on the map to select where you want to upload the sound recording.</p>
+    <p>Phóng to và nhấp vào bản đồ để chọn nơi bạn muốn tải lên bản ghi âm thanh.</p>
+    <div id="map"></div>
+    <br>
+    <div id="upload-section">
+        <label for="audio-upload">Upload Sound Recording:</label>
+        <input type="file" id="audio-upload" accept="audio/*">
+        <br><br>
+        <label for="marker-description">Marker Description:</label>
+        <input type="text" id="marker-description" placeholder="Enter a description">
+        <br><br>
+        <button id="submit-button">Add Marker</button>
+    </div>
+
+    <script>
+        // Define the bounds for Ho Chi Minh City
+        var southWest = L.latLng(10.3352, 106.4914);
+        var northEast = L.latLng(11.0795, 107.0252);
+        var bounds = L.latLngBounds(southWest, northEast);
+
+        // Initialize the map with bounds and minZoom
+        var map = L.map('map', {
+            center: [10.7769, 106.7009], // Center of Ho Chi Minh City
+            zoom: 13,
+            maxBounds: bounds,
+            maxBoundsViscosity: 1.0,
+            minZoom: 10
+        });
+
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        var clickedLatLng;
+
+        // Function to handle map clicks
+        map.on('click', function(e) {
+            clickedLatLng = e.latlng;
+            var confirmUpload = confirm("Do you want to upload the sound recording at the selected location?\nBạn có muốn tải lên bản ghi âm tại vị trí đã chọn không?");
+            if (confirmUpload) {
+                document.getElementById('upload-section').style.display = 'block';
+            } else {
+                document.getElementById('upload-section').style.display = 'none';
+            }
+        });
+
+        // Function to handle the file upload and marker addition
+        document.getElementById('submit-button').addEventListener('click', function() {
+            var audioUpload = document.getElementById('audio-upload');
+            var description = document.getElementById('marker-description').value;
+
+            if (audioUpload.files.length === 0) {
+                alert('Please upload a sound recording.\nVui lòng tải lên một bản ghi âm.');
+                return;
+            }
+
+            var reader = new FileReader();
+            reader.onload = function(event) {
+                var audioUrl = event.target.result;
+
+                // Add marker to the map at the clicked location
+                var marker = L.marker(clickedLatLng).addTo(map);
+                marker.bindPopup(
+                    <b>${description}</b><br>
+                    <audio controls>
+                        <source src="${audioUrl}" type="${audioUpload.files[0].type}">
+                        Your browser does not support the audio element.
+                    </audio>
+                ).openPopup();
+                
+                // Reset upload section
+                document.getElementById('upload-section').style.display = 'none';
+                audioUpload.value = '';
+                document.getElementById('marker-description').value = '';
+            };
+            reader.readAsDataURL(audioUpload.files[0]);
+        });
+    </script>
+</body>
+</html>
