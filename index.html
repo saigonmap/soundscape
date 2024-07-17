@@ -33,24 +33,28 @@
     </div>
 
     <script>
-        // Define the bounds for Ho Chi Minh City
-        var southWest = L.latLng(10.3352, 106.4914);
-        var northEast = L.latLng(11.0795, 107.0252);
-        var bounds = L.latLngBounds(southWest, northEast);
-
-        // Initialize the map with bounds and minZoom
-        var map = L.map('map', {
-            center: [10.7769, 106.7009], // Center of Ho Chi Minh City
-            zoom: 13,
-            maxBounds: bounds,
-            maxBoundsViscosity: 1.0,
-            minZoom: 10
-        });
-
-        // Add OpenStreetMap tiles
+        // Initialize the map
+        var map = L.map('map').setView([10.7769, 106.7009], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
+
+        // Load existing markers from server
+        fetch('http://localhost:3000/markers')
+            .then(response => response.json())
+            .then(markers => {
+                markers.forEach(marker => {
+                    var audioUrl = marker.audio_path; // Adjust based on your database structure
+                    var description = marker.description;
+                    var latlng = L.latLng(marker.lat, marker.lng);
+
+                    var audioElement = `<audio controls><source src="${audioUrl}" type="audio/mpeg">Your browser does not support the audio element.</audio>`;
+                    var popupContent = `<b>${description}</b><br>${audioElement}`;
+
+                    L.marker(latlng).addTo(map).bindPopup(popupContent);
+                });
+            })
+            .catch(error => console.error('Error fetching markers:', error));
 
         var clickedLatLng;
 
@@ -75,48 +79,40 @@
                 return;
             }
 
-            var reader = new FileReader();
-            reader.onload = function(event) {
-                var audioUrl = event.target.result;
-                var formData = new FormData();
-                formData.append('audio', audioUpload.files[0]);
-                formData.append('description', description);
-                formData.append('lat', clickedLatLng.lat);
-                formData.append('lng', clickedLatLng.lng);
+            var formData = new FormData();
+            formData.append('audio', audioUpload.files[0]);
+            formData.append('description', description);
+            formData.append('lat', clickedLatLng.lat);
+            formData.append('lng', clickedLatLng.lng);
 
-                // Add marker to the map at the clicked location
-                var marker = L.marker(clickedLatLng).addTo(map);
-                marker.bindPopup(
-                    `<b>${description}</b><br>
-                    <audio controls>
-                        <source src="${audioUrl}" type="${audioUpload.files[0].type}">
-                        Your browser does not support the audio element.
-                    </audio>`
-                ).openPopup();
+            // Upload file and marker data to server
+            fetch('http://localhost:3000/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Add marker to the map after successful upload
+                    var audioUrl = URL.createObjectURL(audioUpload.files[0]);
+                    var audioElement = `<audio controls><source src="${audioUrl}" type="${audioUpload.files[0].type}">Your browser does not support the audio element.</audio>`;
+                    var popupContent = `<b>${description}</b><br>${audioElement}`;
 
-                // Reset upload section
-                document.getElementById('upload-section').style.display = 'none';
-                audioUpload.value = '';
-                document.getElementById('marker-description').value = '';
+                    var marker = L.marker(clickedLatLng).addTo(map);
+                    marker.bindPopup(popupContent).openPopup();
 
-                // Upload file to server
-                fetch('http://localhost:3000/upload', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Optionally handle successful upload response
-                    } else {
-                        alert('File upload failed.');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                });
-            };
-            reader.readAsDataURL(audioUpload.files[0]);
+                    // Reset upload section
+                    document.getElementById('upload-section').style.display = 'none';
+                    audioUpload.value = '';
+                    document.getElementById('marker-description').value = '';
+                } else {
+                    alert('File upload failed.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('File upload failed.');
+            });
         });
     </script>
 </body>
